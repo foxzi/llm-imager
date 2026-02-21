@@ -1,0 +1,54 @@
+# Example configuration for llm-imager
+# Copy to ~/.llm-imager.yaml
+
+# Default generation settings
+defaults:
+  model: "openai/dall-e-3"
+  size: "1024x1024"
+  quality: "standard"
+  style: "natural"
+  count: 1
+  aspect_ratio: "1:1"
+
+# Provider settings
+# API keys can also be set via environment variables:
+# - OPENAI_API_KEY
+# - GOOGLE_API_KEY or GEMINI_API_KEY
+# - STABILITY_API_KEY
+# - REPLICATE_API_TOKEN
+# - OPENROUTER_API_KEY
+providers:
+  openai:
+    # api_key: "sk-..."
+    timeout: 60s
+    max_retries: 3
+    enabled: true
+
+  google:
+    # api_key: "..."
+    timeout: 60s
+    max_retries: 3
+    enabled: true
+
+  stability:
+    # api_key: "..."
+    timeout: 120s
+    max_retries: 3
+    enabled: true
+
+  replicate:
+    # api_key: "..."
+    timeout: 300s
+    max_retries: 3
+    enabled: true
+
+  openrouter:
+    # api_key: "..."
+    timeout: 120s
+    max_retries: 3
+    enabled: true
+
+# Output settings
+output:
+  directory: "./"
+  format: "png"
