@@ -9,7 +9,7 @@ homepage: https://github.com/foxzi/llm-imager
 license: MIT
 
 contents:
-  - src: ./dist/llm-imager_linux_{{ .Env.GOARCH }}
+  - src: ./dist/llm-imager
     dst: /usr/bin/llm-imager
     file_info:
       mode: 0755

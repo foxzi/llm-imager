@@ -69,6 +69,9 @@ jobs:
           name: binary-linux-${{ matrix.goarch }}
           path: dist
 
+      - name: Rename binary for nfpm
+        run: mv dist/llm-imager_linux_${{ matrix.goarch }} dist/llm-imager
+
       - name: Get version
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
