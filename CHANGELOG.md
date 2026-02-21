@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- LICENSE file (MIT)
+- Provider details documentation in README
+- Advanced usage examples in README
+- Troubleshooting section in README
+- Contributing guidelines in README
+
 ### Changed
-- Updated OpenRouter models to current API (gemini-2.5-flash-image, gemini-3-pro-image-preview, gpt-5-image, gpt-5-image-mini)
+- Updated OpenRouter models in README to match current API
+
+## [0.1.0] - 2025-02-22
 
 ### Added
 - Initial project structure

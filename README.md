@@ -120,8 +120,225 @@ llm-imager list models -p openai
 - `replicate/sdxl` - Stable Diffusion XL
 
 ### OpenRouter
-- `openrouter/google/gemini-2.5-flash-preview-image-generation`
-- `openrouter/openai/gpt-image-1`
+- `openrouter/google/gemini-2.5-flash-image` - Gemini 2.5 Flash Image
+- `openrouter/google/gemini-3-pro-image-preview` - Gemini 3 Pro Image Preview
+- `openrouter/openai/gpt-5-image` - GPT-5 Image
+- `openrouter/openai/gpt-5-image-mini` - GPT-5 Image Mini
+
+## Provider Details
+
+### OpenAI
+- **Best for**: High-quality artistic images, photorealistic content
+- **Features**: HD quality, style control (vivid/natural), size options
+- **Limits**: DALL-E 3 generates 1 image per request, DALL-E 2 up to 10
+- **Pricing**: Pay per image, HD costs more
+
+```bash
+# DALL-E 3 with vivid style
+llm-imager -m openai/dall-e-3 -p "cyberpunk cityscape at night" --quality hd --style vivid -o cyberpunk.png
+
+# DALL-E 2 multiple images
+llm-imager -m openai/dall-e-2 -p "minimalist logo design" -n 4 --size 512x512 -o logo.png
+```
+
+### Google Gemini
+- **Best for**: Fast generation, good quality/speed balance
+- **Features**: Aspect ratio control, image size options
+- **Limits**: Rate limits apply based on API tier
+
+```bash
+# Gemini with aspect ratio
+llm-imager -m google/gemini-2.5-flash-image -p "mountain landscape panorama" --aspect-ratio 16:9 -o panorama.png
+
+# Square format
+llm-imager -m google/gemini-2.5-flash-image -p "product photo of headphones" --aspect-ratio 1:1 -o product.png
+```
+
+### Stability AI
+- **Best for**: Fine control over generation, negative prompts, artistic styles
+- **Features**: Negative prompts, seed control, generation steps
+- **Models**: Core (fast), Ultra (quality), SD3 (latest)
+
+```bash
+# Stable Image Ultra with negative prompt
+llm-imager -m stability/stable-image-ultra -p "portrait of a woman, oil painting style" \
+  --negative-prompt "blurry, low quality, distorted" -o portrait.png
+
+# SD3 with seed for reproducibility
+llm-imager -m stability/sd3-large -p "abstract geometric art" --seed 12345 -o abstract.png
+```
+
+### Replicate
+- **Best for**: Access to open-source models, FLUX, SDXL
+- **Features**: Many model variants, custom parameters
+- **Note**: Generation may take longer due to cold starts
+
+```bash
+# FLUX 1.1 Pro
+llm-imager -m replicate/flux-1.1-pro -p "hyperrealistic photo of a coffee cup" -o coffee.png
+
+# FLUX Schnell (faster)
+llm-imager -m replicate/flux-schnell -p "quick sketch of a cat" -o cat.png
+
+# SDXL with aspect ratio
+llm-imager -m replicate/sdxl -p "fantasy castle" --aspect-ratio 16:9 -o castle.png
+```
+
+### OpenRouter
+- **Best for**: Single API key for multiple providers, fallback options
+- **Features**: Access to various models through unified API
+- **Note**: Pricing varies by underlying model
+
+```bash
+# GPT-5 Image via OpenRouter
+llm-imager -m openrouter/openai/gpt-5-image -p "futuristic robot" -o robot.png
+
+# Gemini via OpenRouter
+llm-imager -m openrouter/google/gemini-2.5-flash-image -p "watercolor flowers" -o flowers.png
+```
+
+## Advanced Examples
+
+### Batch Generation Script
+
+```bash
+#!/bin/bash
+prompts=("sunset beach" "mountain forest" "city skyline")
+for i in "${!prompts[@]}"; do
+  llm-imager -m google/gemini-2.5-flash-image -p "${prompts[$i]}" -o "image_$i.png"
+done
+```
+
+### Different Formats
+
+```bash
+# PNG (default, lossless)
+llm-imager -p "logo design" -o logo.png
+
+# JPEG (smaller file size)
+llm-imager -p "photo landscape" -o photo.jpg
+
+# WebP (modern format)
+llm-imager -p "web banner" -o banner.webp
+```
+
+### Using Config File for Defaults
+
+```yaml
+# ~/.llm-imager.yaml
+defaults:
+  model: "openai/dall-e-3"
+  quality: "hd"
+  style: "vivid"
+
+providers:
+  openai:
+    enabled: true
+  google:
+    enabled: true
+```
+
+Then simply:
+```bash
+llm-imager -p "your prompt" -o output.png
+```
+
+## Troubleshooting
+
+### API Key Errors
+
+```
+Error: OpenAI API key is required
+```
+**Solution**: Set the environment variable:
+```bash
+export OPENAI_API_KEY="sk-your-key-here"
+```
+
+### Invalid Model ID
+
+```
+Error: model not found
+```
+**Solution**: Check available models:
+```bash
+llm-imager list models
+```
+
+### Rate Limits
+
+```
+Error: rate limit exceeded
+```
+**Solution**: Wait and retry, or use a different provider:
+```bash
+# Switch to another provider
+llm-imager -m google/gemini-2.5-flash-image -p "your prompt" -o output.png
+```
+
+### Timeout Errors
+
+```
+Error: context deadline exceeded
+```
+**Solution**: Some models take longer. Increase timeout in config:
+```yaml
+providers:
+  replicate:
+    timeout: 300s
+```
+
+### Content Policy Violations
+
+```
+Error: content policy violation
+```
+**Solution**: Modify your prompt to comply with provider guidelines. Avoid explicit content, violence, or copyrighted characters.
+
+## Contributing
+
+Contributions are welcome! Here's how to get started:
+
+### Development Setup
+
+```bash
+git clone https://github.com/piligrim/llm-imager.git
+cd llm-imager
+go mod download
+go build ./...
+```
+
+### Running Tests
+
+```bash
+go test ./...
+```
+
+### Adding a New Provider
+
+1. Create a new file in `internal/provider/`
+2. Implement the `Provider` interface:
+   - `Name() string`
+   - `SupportedModels() []Model`
+   - `ValidateRequest(*generator.Request) error`
+   - `Generate(context.Context, *generator.Request) (*generator.Response, error)`
+3. Register the provider in `internal/provider/registry.go`
+4. Add tests in `internal/provider/<name>_test.go`
+
+### Code Style
+
+- Follow Go conventions (`gofmt`, `golint`)
+- Add comments for exported functions
+- Write tests for new functionality
+
+### Pull Requests
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-provider`)
+3. Make your changes
+4. Run tests (`go test ./...`)
+5. Commit with clear messages
+6. Push and create a Pull Request
 
 ## License
 
