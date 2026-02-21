@@ -1,7 +1,7 @@
 name: llm-imager
-arch: "{{ .Env.GOARCH }}"
+arch: "${GOARCH}"
 platform: linux
-version: "{{ .Env.VERSION }}"
+version: "${VERSION}"
 maintainer: foxzi
 description: CLI tool for generating images via various AI APIs
 vendor: foxzi

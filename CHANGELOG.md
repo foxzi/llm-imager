@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Package names in release workflow using envsubst
+
+## [0.1.0] - 2025-02-22
+
 ### Added
 - LICENSE file (MIT)
 - Provider details documentation in README
