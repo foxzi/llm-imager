@@ -18,15 +18,7 @@ type Loader struct {
 func NewLoader() *Loader {
 	v := viper.New()
 
-	v.SetConfigName(".llm-imager")
 	v.SetConfigType("yaml")
-
-	// Search paths (in order of priority)
-	v.AddConfigPath(".")
-	if home, err := os.UserHomeDir(); err == nil {
-		v.AddConfigPath(home)
-	}
-	v.AddConfigPath("/etc/llm-imager")
 
 	// Environment variables
 	v.SetEnvPrefix("LLMIMAGER")
@@ -52,13 +44,33 @@ func bindEnvVariables(v *viper.Viper) {
 }
 
 // Load loads configuration from file and environment
+// Config files are loaded in order (later overrides earlier):
+// 1. /etc/llm-imager/llm-imager.yaml (system-wide)
+// 2. ~/.llm-imager.yaml (user)
+// 3. ./.llm-imager.yaml (local)
 func (l *Loader) Load() (*Config, error) {
 	setDefaults(l.v)
 
-	// Try to read config file (optional)
-	if err := l.v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, err
+	// Load configs in order of priority (system -> user -> local)
+	configPaths := []string{
+		"/etc/llm-imager/llm-imager.yaml",
+	}
+
+	// Add user config
+	if home, err := os.UserHomeDir(); err == nil {
+		configPaths = append(configPaths, filepath.Join(home, ".llm-imager.yaml"))
+	}
+
+	// Add local config
+	configPaths = append(configPaths, ".llm-imager.yaml")
+
+	// Load each config file if exists
+	for _, path := range configPaths {
+		if _, err := os.Stat(path); err == nil {
+			l.v.SetConfigFile(path)
+			if err := l.v.MergeInConfig(); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -72,8 +84,19 @@ func (l *Loader) Load() (*Config, error) {
 
 // LoadFromFile loads configuration from specified file
 func (l *Loader) LoadFromFile(path string) (*Config, error) {
+	setDefaults(l.v)
 	l.v.SetConfigFile(path)
-	return l.Load()
+
+	if err := l.v.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	if err := l.v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }
 
 // ConfigFilePath returns the path to the config file if found

@@ -52,6 +52,11 @@ go build -o llm-imager ./cmd/llm-imager
 
 ## Configuration
 
+Configuration is loaded in order (later overrides earlier):
+1. `/etc/llm-imager/llm-imager.yaml` — system-wide config
+2. `~/.llm-imager.yaml` — user config
+3. `./.llm-imager.yaml` — local config (current directory)
+
 ### Environment Variables
 
 ```bash
