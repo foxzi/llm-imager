@@ -11,14 +11,41 @@ CLI tool for generating images via various AI APIs.
 
 ## Installation
 
+### Debian/Ubuntu (APT)
+
 ```bash
-go install github.com/piligrim/llm-imager/cmd/llm-imager@latest
+echo "deb [trusted=yes] https://foxzi.github.io/llm-imager/apt stable main" | sudo tee /etc/apt/sources.list.d/llm-imager.list
+sudo apt update
+sudo apt install llm-imager
 ```
 
-Or build from source:
+### RHEL/Fedora/CentOS (RPM)
 
 ```bash
-git clone https://github.com/piligrim/llm-imager.git
+sudo tee /etc/yum.repos.d/llm-imager.repo << 'EOF'
+[llm-imager]
+name=llm-imager
+baseurl=https://foxzi.github.io/llm-imager/rpm
+enabled=1
+gpgcheck=0
+EOF
+sudo dnf install llm-imager
+```
+
+### Go Install
+
+```bash
+go install github.com/foxzi/llm-imager/cmd/llm-imager@latest
+```
+
+### Binary Download
+
+Download from [GitHub Releases](https://github.com/foxzi/llm-imager/releases).
+
+### Build from Source
+
+```bash
+git clone https://github.com/foxzi/llm-imager.git
 cd llm-imager
 go build -o llm-imager ./cmd/llm-imager
 ```

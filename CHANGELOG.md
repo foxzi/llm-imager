@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Advanced usage examples in README
 - Troubleshooting section in README
 - Contributing guidelines in README
+- CI workflow for testing and linting
+- Release workflow for building binaries (amd64, arm64)
+- DEB and RPM package generation via nfpm
+- GitHub Pages package repository (APT and RPM)
 
 ### Changed
 - Updated OpenRouter models in README to match current API

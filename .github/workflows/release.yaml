@@ -1,0 +1,237 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+          go build -ldflags="-s -w -X main.version=${{ steps.version.outputs.VERSION }}" \
+            -o dist/llm-imager_${{ matrix.goos }}_${{ matrix.goarch }} \
+            ./cmd/llm-imager
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/llm-imager_${{ matrix.goos }}_${{ matrix.goarch }}
+
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+        format: [deb, rpm]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          name: binary-linux-${{ matrix.goarch }}
+          path: dist
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Install nfpm
+        run: |
+          curl -sfL https://install.goreleaser.com/github.com/goreleaser/nfpm.sh | sh -s -- -b /usr/local/bin
+
+      - name: Build package
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          nfpm package -p ${{ matrix.format }} -t dist/
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.format }}-${{ matrix.goarch }}
+          path: dist/*.${{ matrix.format }}
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "llm-imager_*" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} release/ \;
+          cd release
+          for f in llm-imager_linux_*; do
+            [ -f "$f" ] && tar -czvf "${f}.tar.gz" "$f" && rm "$f"
+          done
+          ls -la
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          generate_release_notes: true
+
+  publish-repo:
+    needs: package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup GPG (optional signing)
+        run: |
+          echo "Skipping GPG setup - packages will be unsigned"
+
+      - name: Build APT repository
+        run: |
+          mkdir -p repo/apt/pool/main repo/apt/dists/stable/main/binary-amd64 repo/apt/dists/stable/main/binary-arm64
+
+          # Copy deb packages
+          find artifacts -name "*.deb" -exec cp {} repo/apt/pool/main/ \;
+
+          # Generate Packages files
+          cd repo/apt
+          for arch in amd64 arm64; do
+            dpkg-scanpackages --arch $arch pool/ > dists/stable/main/binary-$arch/Packages
+            gzip -k dists/stable/main/binary-$arch/Packages
+          done
+
+          # Generate Release file
+          cat > dists/stable/Release << EOF
+          Origin: llm-imager
+          Label: llm-imager
+          Suite: stable
+          Codename: stable
+          Architectures: amd64 arm64
+          Components: main
+          Description: llm-imager APT repository
+          EOF
+
+          # Add checksums
+          echo "MD5Sum:" >> dists/stable/Release
+          find dists/stable -name "Packages*" -exec sh -c 'echo " $(md5sum {} | cut -d" " -f1) $(stat -c%s {}) {}"' \; | sed 's|dists/stable/||' >> dists/stable/Release
+          echo "SHA256:" >> dists/stable/Release
+          find dists/stable -name "Packages*" -exec sh -c 'echo " $(sha256sum {} | cut -d" " -f1) $(stat -c%s {}) {}"' \; | sed 's|dists/stable/||' >> dists/stable/Release
+
+      - name: Build RPM repository
+        run: |
+          sudo apt-get update && sudo apt-get install -y createrepo-c
+
+          mkdir -p repo/rpm/packages
+
+          # Copy rpm packages
+          find artifacts -name "*.rpm" -exec cp {} repo/rpm/packages/ \;
+
+          # Create repository metadata
+          createrepo_c repo/rpm
+
+      - name: Create index page
+        run: |
+          cat > repo/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>llm-imager Package Repository</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+              h1 { color: #333; }
+              pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+              code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+              .section { margin: 30px 0; }
+            </style>
+          </head>
+          <body>
+            <h1>llm-imager Package Repository</h1>
+            <p>CLI tool for generating images via various AI APIs.</p>
+
+            <div class="section">
+              <h2>Debian/Ubuntu (APT)</h2>
+              <pre>echo "deb [trusted=yes] https://foxzi.github.io/llm-imager/apt stable main" | sudo tee /etc/apt/sources.list.d/llm-imager.list
+          sudo apt update
+          sudo apt install llm-imager</pre>
+            </div>
+
+            <div class="section">
+              <h2>RHEL/Fedora/CentOS (RPM)</h2>
+              <pre>sudo tee /etc/yum.repos.d/llm-imager.repo << 'REPO'
+          [llm-imager]
+          name=llm-imager
+          baseurl=https://foxzi.github.io/llm-imager/rpm
+          enabled=1
+          gpgcheck=0
+          REPO
+          sudo dnf install llm-imager</pre>
+            </div>
+
+            <div class="section">
+              <h2>Binary Download</h2>
+              <p>Download binaries from <a href="https://github.com/foxzi/llm-imager/releases">GitHub Releases</a></p>
+            </div>
+
+            <div class="section">
+              <h2>Go Install</h2>
+              <pre>go install github.com/foxzi/llm-imager/cmd/llm-imager@latest</pre>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: repo
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
