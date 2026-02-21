@@ -1,7 +1,7 @@
 name: llm-imager
-arch: ${GOARCH}
+arch: "{{ .Env.GOARCH }}"
 platform: linux
-version: ${VERSION}
+version: "{{ .Env.VERSION }}"
 maintainer: foxzi
 description: CLI tool for generating images via various AI APIs
 vendor: foxzi
@@ -9,7 +9,7 @@ homepage: https://github.com/foxzi/llm-imager
 license: MIT
 
 contents:
-  - src: ./dist/llm-imager_${GOOS}_${GOARCH}
+  - src: ./dist/llm-imager_linux_{{ .Env.GOARCH }}
     dst: /usr/bin/llm-imager
     file_info:
       mode: 0755
