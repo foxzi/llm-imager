@@ -1,0 +1,16 @@
+linters:
+  disable:
+    - errcheck
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+
+linters-settings:
+  staticcheck:
+    checks: ["all", "-SA1019"]
+
+issues:
+  exclude-use-default: true
