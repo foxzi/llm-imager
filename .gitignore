@@ -27,6 +27,7 @@ Thumbs.db
 
 # Config files with secrets
 .llm-imager.yaml
+.env
 
 # Project specific
 CLAUDE.md

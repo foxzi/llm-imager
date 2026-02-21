@@ -45,14 +45,26 @@ func (o *OpenRouter) Name() string {
 func (o *OpenRouter) SupportedModels() []Model {
 	return []Model{
 		{
-			ID:       "openrouter/google/gemini-2.5-flash-preview-image-generation",
-			Name:     "Gemini 2.5 Flash (via OpenRouter)",
+			ID:       "openrouter/google/gemini-2.5-flash-image",
+			Name:     "Gemini 2.5 Flash Image (via OpenRouter)",
 			Provider: "openrouter",
 			Features: []string{"aspect_ratio", "image_size"},
 		},
 		{
-			ID:       "openrouter/openai/gpt-image-1",
-			Name:     "GPT Image 1 (via OpenRouter)",
+			ID:       "openrouter/google/gemini-3-pro-image-preview",
+			Name:     "Gemini 3 Pro Image Preview (via OpenRouter)",
+			Provider: "openrouter",
+			Features: []string{"aspect_ratio", "image_size"},
+		},
+		{
+			ID:       "openrouter/openai/gpt-5-image",
+			Name:     "GPT-5 Image (via OpenRouter)",
+			Provider: "openrouter",
+			Features: []string{"aspect_ratio"},
+		},
+		{
+			ID:       "openrouter/openai/gpt-5-image-mini",
+			Name:     "GPT-5 Image Mini (via OpenRouter)",
 			Provider: "openrouter",
 			Features: []string{"aspect_ratio"},
 		},
@@ -179,13 +191,23 @@ func (o *OpenRouter) Generate(ctx context.Context, req *generator.Request) (*gen
 		// Check images array
 		for i, img := range msg.Images {
 			if img.ImageURL.URL != "" {
-				imageData, format, err := o.downloadImage(ctx, img.ImageURL.URL)
+				url := img.ImageURL.URL
+				var imageData []byte
+				var format string
+				var err error
+
+				// Check if it's a data URL
+				if strings.HasPrefix(url, "data:image/") {
+					imageData, format, err = o.parseDataURL(url)
+				} else {
+					imageData, format, err = o.downloadImage(ctx, url)
+				}
+
 				if err != nil {
-					return nil, fmt.Errorf("failed to download image: %w", err)
+					return nil, fmt.Errorf("failed to get image: %w", err)
 				}
 				images = append(images, generator.Image{
 					Data:   imageData,
-					URL:    img.ImageURL.URL,
 					Format: format,
 					Index:  i,
 				})
@@ -242,8 +264,8 @@ func (o *OpenRouter) Generate(ctx context.Context, req *generator.Request) (*gen
 }
 
 func (o *OpenRouter) extractModelName(model string) string {
-	if strings.HasPrefix(model, "openrouter/") {
-		return strings.TrimPrefix(model, "openrouter/")
+	if name, found := strings.CutPrefix(model, "openrouter/"); found {
+		return name
 	}
 	return model
 }

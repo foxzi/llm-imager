@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Updated OpenRouter models to current API (gemini-2.5-flash-image, gemini-3-pro-image-preview, gpt-5-image, gpt-5-image-mini)
+
 ### Added
 - Initial project structure
 - CLI interface with Cobra
