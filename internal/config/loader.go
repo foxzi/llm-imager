@@ -21,11 +21,12 @@ func NewLoader() *Loader {
 	v.SetConfigName(".llm-imager")
 	v.SetConfigType("yaml")
 
-	// Search paths
+	// Search paths (in order of priority)
+	v.AddConfigPath(".")
 	if home, err := os.UserHomeDir(); err == nil {
 		v.AddConfigPath(home)
 	}
-	v.AddConfigPath(".")
+	v.AddConfigPath("/etc/llm-imager")
 
 	// Environment variables
 	v.SetEnvPrefix("LLMIMAGER")
