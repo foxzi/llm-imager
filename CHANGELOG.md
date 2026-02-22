@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Dry-run mode (--dry-run flag) for generating placeholder images without API calls
+
 ### Changed
 - Config loading now cascades: system -> user -> local (later overrides earlier)
 - System config path is now /etc/llm-imager/llm-imager.yaml

@@ -11,6 +11,7 @@ import (
 
 	"github.com/piligrim/llm-imager/internal/generator"
 	"github.com/piligrim/llm-imager/internal/output"
+	"github.com/piligrim/llm-imager/internal/provider"
 )
 
 type generateOptions struct {
@@ -27,6 +28,7 @@ type generateOptions struct {
 	aspectRatio    string
 	steps          int
 	providerName   string
+	dryRun         bool
 }
 
 func newGenerateCmd() *cobra.Command {
@@ -74,6 +76,8 @@ or just the model name if the provider can be auto-detected.`,
 		"number of generation steps (Stability AI, Replicate)")
 	cmd.Flags().StringVar(&opts.providerName, "provider", "",
 		"explicit provider (openai/google/stability/replicate/openrouter)")
+	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false,
+		"generate placeholder images without API calls")
 
 	cmd.MarkFlagRequired("prompt")
 	cmd.MarkFlagRequired("output")
@@ -112,16 +116,20 @@ func runGenerate(ctx context.Context, opts *generateOptions) error {
 	}
 	var err error
 
-	if opts.providerName != "" {
-		p, err = registry.GetByName(opts.providerName)
+	if opts.dryRun {
+		p = provider.NewDryRun()
+		fmt.Printf("Dry-run mode: generating placeholder image (%s)...\n", opts.size)
 	} else {
-		p, err = registry.GetByModel(opts.model)
+		if opts.providerName != "" {
+			p, err = registry.GetByName(opts.providerName)
+		} else {
+			p, err = registry.GetByModel(opts.model)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get provider: %w", err)
+		}
+		fmt.Printf("Generating image with %s using model %s...\n", p.Name(), opts.model)
 	}
-	if err != nil {
-		return fmt.Errorf("failed to get provider: %w", err)
-	}
-
-	fmt.Printf("Generating image with %s using model %s...\n", p.Name(), opts.model)
 
 	resp, err := p.Generate(ctx, req)
 	if err != nil {
