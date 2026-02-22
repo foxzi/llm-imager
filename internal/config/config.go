@@ -18,6 +18,7 @@ type DefaultsConfig struct {
 	Style       string `mapstructure:"style"`
 	Count       int    `mapstructure:"count"`
 	AspectRatio string `mapstructure:"aspect_ratio"`
+	DryRun      bool   `mapstructure:"dry_run"`
 }
 
 // ProvidersConfig contains settings for all providers

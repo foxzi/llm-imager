@@ -9,6 +9,7 @@ defaults:
   style: "natural"
   count: 1
   aspect_ratio: "1:1"
+  dry_run: false  # set to true to generate placeholders without API calls
 
 # Provider settings
 # API keys can also be set via environment variables:

@@ -29,6 +29,7 @@ type generateOptions struct {
 	steps          int
 	providerName   string
 	dryRun         bool
+	hasDryRun      bool
 }
 
 func newGenerateCmd() *cobra.Command {
@@ -46,8 +47,8 @@ or just the model name if the provider can be auto-detected.`,
   llm-imager g -m openai/dall-e-3 -p "abstract art" -o art.png
   llm-imager generate -m stability/stable-image-core -p "cyberpunk city" --negative-prompt "blurry" -o city.png`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Check if seed flag was explicitly set
 			opts.hasSeed = cmd.Flags().Changed("seed")
+			opts.hasDryRun = cmd.Flags().Changed("dry-run")
 			return runGenerate(cmd.Context(), opts)
 		},
 	}
@@ -169,5 +170,8 @@ func applyDefaults(opts *generateOptions) {
 	}
 	if opts.aspectRatio == "" && cfg.Defaults.AspectRatio != "" {
 		opts.aspectRatio = cfg.Defaults.AspectRatio
+	}
+	if !opts.hasDryRun && cfg.Defaults.DryRun {
+		opts.dryRun = true
 	}
 }
