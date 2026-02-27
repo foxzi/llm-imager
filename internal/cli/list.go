@@ -1,11 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/piligrim/llm-imager/internal/provider"
 	"github.com/spf13/cobra"
 )
 
@@ -49,6 +52,7 @@ func newListProvidersCmd() *cobra.Command {
 
 func newListModelsCmd() *cobra.Command {
 	var providerFilter string
+	var showPrices bool
 
 	cmd := &cobra.Command{
 		Use:     "models",
@@ -56,17 +60,36 @@ func newListModelsCmd() *cobra.Command {
 		Short:   "List available models",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "MODEL\tPROVIDER\tFEATURES")
 
-			for _, model := range registry.ListModels() {
-				if providerFilter != "" && model.Provider != providerFilter {
-					continue
+			if showPrices {
+				fmt.Fprintln(w, "MODEL\tPROVIDER\tPRICE (per 1M tokens)")
+
+				// Fetch models with prices from OpenRouter
+				models, err := provider.FetchImageModels(context.Background())
+				if err != nil {
+					return fmt.Errorf("failed to fetch prices: %w", err)
 				}
-				features := strings.Join(model.Features, ", ")
-				if features == "" {
-					features = "-"
+
+				for _, model := range models {
+					if providerFilter != "" && model.Provider != providerFilter {
+						continue
+					}
+					price := formatPrice(model.Pricing)
+					fmt.Fprintf(w, "%s\t%s\t%s\n", model.ID, model.Provider, price)
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\n", model.ID, model.Provider, features)
+			} else {
+				fmt.Fprintln(w, "MODEL\tPROVIDER\tFEATURES")
+
+				for _, model := range registry.ListModels() {
+					if providerFilter != "" && model.Provider != providerFilter {
+						continue
+					}
+					features := strings.Join(model.Features, ", ")
+					if features == "" {
+						features = "-"
+					}
+					fmt.Fprintf(w, "%s\t%s\t%s\n", model.ID, model.Provider, features)
+				}
 			}
 
 			w.Flush()
@@ -76,8 +99,31 @@ func newListModelsCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&providerFilter, "provider", "p", "",
 		"filter by provider")
+	cmd.Flags().BoolVar(&showPrices, "prices", false,
+		"show pricing info from OpenRouter API")
 
 	return cmd
+}
+
+func formatPrice(p *provider.Pricing) string {
+	if p == nil {
+		return "-"
+	}
+
+	prompt, err := strconv.ParseFloat(p.Prompt, 64)
+	if err != nil || prompt < 0 {
+		return "-"
+	}
+	completion, err := strconv.ParseFloat(p.Completion, 64)
+	if err != nil || completion < 0 {
+		return "-"
+	}
+
+	// Convert to per 1M tokens
+	promptPerM := prompt * 1_000_000
+	completionPerM := completion * 1_000_000
+
+	return fmt.Sprintf("$%.2f / $%.2f", promptPerM, completionPerM)
 }
 
 func checkProviderAPIKey(name string) error {
