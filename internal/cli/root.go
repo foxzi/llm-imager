@@ -18,6 +18,8 @@ var (
 
 // NewRootCmd creates the root command
 func NewRootCmd() *cobra.Command {
+	opts := &generateOptions{}
+
 	rootCmd := &cobra.Command{
 		Use:   "llm-imager",
 		Short: "CLI tool for generating images via various AI APIs",
@@ -32,16 +34,55 @@ Examples:
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return initConfig()
 		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !cmd.Flags().Changed("prompt") {
+				return cmd.Help()
+			}
+			if !cmd.Flags().Changed("output") {
+				return fmt.Errorf("required flag \"output\" not set")
+			}
+			opts.hasSeed = cmd.Flags().Changed("seed")
+			opts.hasDryRun = cmd.Flags().Changed("dry-run")
+			return runGenerate(cmd.Context(), opts)
+		},
 		SilenceUsage: true,
 	}
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		"config file (default: ~/.llm-imager.yaml)")
 
+	rootCmd.Flags().StringVarP(&opts.model, "model", "m", "",
+		"model to use (e.g., google/gemini-2.5-flash-image)")
+	rootCmd.Flags().StringVarP(&opts.prompt, "prompt", "p", "",
+		"text prompt for image generation")
+	rootCmd.Flags().StringVarP(&opts.outputPath, "output", "o", "",
+		"output file path")
+	rootCmd.Flags().StringVar(&opts.size, "size", "",
+		"image size (e.g., 1024x1024)")
+	rootCmd.Flags().StringVar(&opts.quality, "quality", "",
+		"image quality (standard/hd or low/medium/high)")
+	rootCmd.Flags().StringVar(&opts.style, "style", "",
+		"image style (natural/vivid)")
+	rootCmd.Flags().IntVarP(&opts.count, "count", "n", 0,
+		"number of images to generate")
+	rootCmd.Flags().Int64Var(&opts.seed, "seed", 0,
+		"seed for reproducibility")
+	rootCmd.Flags().StringVar(&opts.negativePrompt, "negative-prompt", "",
+		"negative prompt (things to avoid)")
+	rootCmd.Flags().StringVar(&opts.aspectRatio, "aspect-ratio", "",
+		"aspect ratio (e.g., 16:9, 1:1)")
+	rootCmd.Flags().IntVar(&opts.steps, "steps", 0,
+		"number of generation steps (Stability AI, Replicate)")
+	rootCmd.Flags().StringVar(&opts.providerName, "provider", "",
+		"explicit provider (openai/google/stability/replicate/openrouter)")
+	rootCmd.Flags().BoolVar(&opts.dryRun, "dry-run", false,
+		"generate placeholder images without API calls")
+
 	rootCmd.AddCommand(
 		newGenerateCmd(),
 		newListCmd(),
 		newVersionCmd(),
+		newCompletionCmd(),
 	)
 
 	return rootCmd
