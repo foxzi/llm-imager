@@ -28,6 +28,13 @@ type Model struct {
 	Provider string   // Provider name
 	Sizes    []string // Supported sizes
 	Features []string // negative_prompt, seed, steps, etc.
+	Pricing  *Pricing // Pricing info (optional)
+}
+
+// Pricing contains model pricing information (per token)
+type Pricing struct {
+	Prompt     string // Price per prompt token
+	Completion string // Price per completion token
 }
 
 // ProviderConfig contains provider configuration

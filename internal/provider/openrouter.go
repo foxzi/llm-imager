@@ -327,3 +327,65 @@ func (o *OpenRouter) parseDataURL(dataURL string) ([]byte, string, error) {
 
 	return data, format, nil
 }
+
+// openrouterModelsResponse represents the API response for models list
+type openrouterModelsResponse struct {
+	Data []openrouterModelInfo `json:"data"`
+}
+
+type openrouterModelInfo struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Architecture struct {
+		OutputModalities []string `json:"output_modalities"`
+	} `json:"architecture"`
+	Pricing struct {
+		Prompt     string `json:"prompt"`
+		Completion string `json:"completion"`
+	} `json:"pricing"`
+}
+
+// FetchImageModels fetches available image generation models from OpenRouter API
+func FetchImageModels(ctx context.Context) ([]Model, error) {
+	resp, err := http.Get(openrouterBaseURL + "/models")
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch models: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var apiResp openrouterModelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	var models []Model
+	for _, m := range apiResp.Data {
+		// Filter only image generation models
+		hasImageOutput := false
+		for _, mod := range m.Architecture.OutputModalities {
+			if mod == "image" {
+				hasImageOutput = true
+				break
+			}
+		}
+		if !hasImageOutput {
+			continue
+		}
+
+		models = append(models, Model{
+			ID:       "openrouter/" + m.ID,
+			Name:     m.Name,
+			Provider: "openrouter",
+			Pricing: &Pricing{
+				Prompt:     m.Pricing.Prompt,
+				Completion: m.Pricing.Completion,
+			},
+		})
+	}
+
+	return models, nil
+}
