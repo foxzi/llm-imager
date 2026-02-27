@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-02-27
+
+### Added
+- Shell completion subcommand (bash, zsh, fish, powershell)
+- `--prices` flag for `list models` to show pricing from OpenRouter API
+
 ### Changed
 - Generate flags moved to root command: `llm-imager -p "..." -o "..."` now works without `generate` subcommand
 
